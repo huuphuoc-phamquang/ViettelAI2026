@@ -1,0 +1,27 @@
+# ---- Data (KHÔNG commit — nặng, có bản gốc riêng) ----
+public_set/
+private_set1/
+*.JPG
+*.jpg
+*.png
+
+# ---- COLMAP / model / output ----
+*.bin
+*.ply
+output/
+submission/
+submission.zip
+status.json
+*_renders/
+
+# ---- 3DGS repo clone trên Kaggle ----
+gaussian-splatting/
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
