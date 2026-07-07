@@ -8,9 +8,13 @@ Chạy pipeline cho NHIỀU scene, có checkpoint (status.json) để RESUME.
         --out  /kaggle/working/output \
         --iters 7000 --eval
 
-Cơ chế đánh dấu tiến độ: sau MỖI bước (train / render) ghi ngay vào
+Cơ chế đánh dấu tiến độ: sau MỖI bước (prepare / train / render) ghi ngay vào
 <out>/status.json. Chạy lại script -> scene nào 'render=done' sẽ bỏ qua,
 scene đang dở sẽ tiếp tục từ bước còn thiếu (train skip nếu đã có checkpoint).
+
+Bước prepare (prepare_scene.py) là BẮT BUỘC với data này: cameras.bin gốc là
+SIMPLE_RADIAL và images.bin chứa cả entry không có file -> train.py sẽ crash
+nếu trỏ thẳng vào /kaggle/input.
 """
 import os
 import json
@@ -42,6 +46,8 @@ def main():
     ap.add_argument("--repo", default="/kaggle/working/gaussian-splatting")
     ap.add_argument("--pipe", default="/kaggle/working/pipeline")
     ap.add_argument("--out", default="/kaggle/working/output")
+    ap.add_argument("--scenes-dir", default="/kaggle/working/scenes",
+                    help="nơi xuất scene đã chuẩn hoá (prepare_scene.py)")
     ap.add_argument("--iters", type=int, default=7000)
     ap.add_argument("--eval", action="store_true", help="tính PSNR (chỉ public set có GT)")
     ap.add_argument("--only", nargs="*", default=None, help="chỉ chạy các scene này")
@@ -66,15 +72,24 @@ def main():
             continue
 
         s_in = os.path.join(args.data, scene)
+        s_prep = os.path.join(args.scenes_dir, scene)
         m_out = os.path.join(args.out, scene)
         renders = os.path.join(m_out, "test_renders")
         ckpt = os.path.join(m_out, "point_cloud", f"iteration_{args.iters}", "point_cloud.ply")
         t0 = time.time()
         print(f"\n===== {scene} =====", flush=True)
         try:
+            # 0) PREPARE: SIMPLE_RADIAL->PINHOLE, lọc images.bin, undistort nếu cần
+            if st.get("prepare") != "done" or not os.path.exists(
+                    os.path.join(s_prep, "train", "sparse", "0", "images.bin")):
+                sh(f"python {args.pipe}/prepare_scene.py --scene {s_in} --out {s_prep}")
+                st["prepare"] = "done"
+                status[scene] = st
+                save_status(status_path, status)   # <-- checkpoint sau prepare
+
             # 1) TRAIN (bỏ qua nếu đã có checkpoint)
             if st.get("train") != "done" or not os.path.exists(ckpt):
-                sh(f"cd {args.repo} && python train.py -s {s_in}/train -m {m_out} "
+                sh(f"cd {args.repo} && python train.py -s {s_prep}/train -m {m_out} "
                    f"--iterations {args.iters} --save_iterations {args.iters} "
                    f"--test_iterations {args.iters} -r 1")
                 st["train"] = "done"

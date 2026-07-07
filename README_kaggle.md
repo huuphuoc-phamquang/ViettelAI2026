@@ -8,13 +8,18 @@ lưu ảnh, và (với public set) tính PSNR để chắc chắn ảnh ra hợp
 ```
 <scene>/
   train/
-    images/           200 ảnh (đã resize 1/4)
-    sparse/0/         COLMAP: cameras.bin (PINHOLE, 1 cam), images.bin, points3D.bin/.ply
+    images/           200-240 ảnh (đã resize 1/4)
+    sparse/0/         COLMAP: cameras.bin (SIMPLE_RADIAL, 1 cam), images.bin, points3D.bin/.ply
   test/
     images/           50 ảnh GT   <-- CHỈ CÓ Ở public_set
     test_poses.csv    pose để render: qw..qz (w2c), tx..tz, fx,fy,cx,cy, width,height
 ```
-- Camera model = **PINHOLE**, principal point ở tâm ảnh → dùng projection FoV chuẩn của 3DGS, không cần undistort.
+- Camera model = **SIMPLE_RADIAL** (f, cx, cy, k) → 3DGS gốc **assert lỗi** vì chỉ nhận
+  PINHOLE/SIMPLE_PINHOLE. `k` đa số nhỏ (~0.008) nhưng có scene méo mạnh (HNI0131: k=−0.115).
+- `images.bin` chứa **nhiều entry hơn số ảnh phát hành** (vd hcm0031: 388 entry = 200 train
+  + 50 test + 138 không có file) → trỏ thẳng vào data gốc sẽ crash thiếu file / leak pose test.
+- ⇒ **BẮT BUỘC chạy `prepare_scene.py` trước khi train**: quy camera về PINHOLE, undistort
+  ảnh nếu |k| lớn, lọc images.bin chỉ giữ ảnh train, xuất ra `/kaggle/working/scenes/<scene>`.
 - `test_poses.csv` dùng convention COLMAP giống `images.bin` (world→camera). Script render đã xử lý đúng: `R = qvec2rotmat(q).T`, `T = t`.
 - **private_set1** không có `test/images` → chỉ render để nộp, không tính PSNR local được.
 
@@ -46,11 +51,15 @@ SCENE = "/kaggle/input/vt2026/public_set/hcm0031"   # đổi sang scene khác / 
 !python /kaggle/working/pipeline/inspect_data.py --scene $SCENE
 ```
 
-### 3. Train 7000 iteration
+### 3. Chuẩn hoá scene (BẮT BUỘC) rồi train 7000 iteration
 ```python
-!python train.py -s $SCENE/train -m /kaggle/working/output/hcm0031 \
+PREP = "/kaggle/working/scenes/hcm0031"
+!python /kaggle/working/pipeline/prepare_scene.py --scene $SCENE --out $PREP
+
+!python train.py -s $PREP/train -m /kaggle/working/output/hcm0031 \
     --iterations 7000 --save_iterations 7000 --test_iterations 7000 -r 1
 ```
+- `prepare_scene.py`: SIMPLE_RADIAL → PINHOLE, lọc images.bin, undistort nếu |k| lớn.
 - KHÔNG dùng `--eval` (ta muốn dùng cả 200 ảnh để train; test lấy từ CSV riêng).
 - `-r 1`: giữ nguyên độ phân giải ảnh (đã downscale sẵn).
 - Checkpoint lưu ở `output/hcm0031/point_cloud/iteration_7000/point_cloud.ply`.
@@ -91,7 +100,8 @@ plt.show()
 
 ## Checklist "pipeline OK"
 - [ ] Build submodule không lỗi (import `diff_gaussian_rasterization` được).
-- [ ] `inspect_data.py`: 200 train / 50 pose, camera PINHOLE, tên ảnh test khớp CSV.
+- [ ] `prepare_scene.py` chạy OK: báo số entry images.bin giữ lại = số file train.
+- [ ] `inspect_data.py`: 200-240 train / 50 pose, tên ảnh test khớp CSV.
 - [ ] Train chạy hết 7000 iter, có file `point_cloud/iteration_7000/point_cloud.ply`.
 - [ ] Render ra đủ 50 ảnh, đúng tên, nội dung nhìn ra được cảnh (không đen/nhiễu hoàn toàn).
 - [ ] PSNR public ra số dương hợp lý (nếu bị ~5–8 dB → sai convention pose/intrinsics, cần soi lại).

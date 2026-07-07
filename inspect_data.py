@@ -40,7 +40,10 @@ def main():
     cam_bin = os.path.join(s, "train", "sparse", "0", "cameras.bin")
     if os.path.exists(cam_bin):
         for c in read_cameras_bin(cam_bin):
-            print(f"camera       : id={c[0]} model={c[1]} WxH={c[2]}x{c[3]} params={tuple(round(p,2) for p in c[4])}")
+            print(f"camera       : id={c[0]} model={c[1]} WxH={c[2]}x{c[3]} params={tuple(round(p,5) for p in c[4])}")
+            if c[1] not in ("PINHOLE", "SIMPLE_PINHOLE"):
+                print(f"  !! model {c[1]} không train thẳng với 3DGS được"
+                      f" -> chạy prepare_scene.py trước (k={c[4][-1]:.5f})")
 
     poses = os.path.join(s, "test", "test_poses.csv")
     with open(poses, newline="") as f:
