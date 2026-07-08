@@ -67,10 +67,6 @@ def main():
 
     for scene in scenes:
         st = status.get(scene, {})
-        if st.get("render") == "done":
-            print(f"[skip] {scene}")
-            continue
-
         s_in = os.path.join(args.data, scene)
         s_prep = os.path.join(args.scenes_dir, scene)
         m_out = os.path.join(args.out, scene)
@@ -78,28 +74,36 @@ def main():
         ckpt = os.path.join(m_out, "point_cloud", f"iteration_{args.iters}", "point_cloud.ply")
         t0 = time.time()
         print(f"\n===== {scene} =====", flush=True)
-        try:
-            # 0) PREPARE: SIMPLE_RADIAL->PINHOLE, lọc images.bin, undistort nếu cần
-            if st.get("prepare") != "done" or not os.path.exists(
-                    os.path.join(s_prep, "train", "sparse", "0", "images.bin")):
-                sh(f"python {args.pipe}/prepare_scene.py --scene {s_in} --out {s_prep}")
-                st["prepare"] = "done"
-                status[scene] = st
-                save_status(status_path, status)   # <-- checkpoint sau prepare
+        # số pose cần render (để biết renders đã đủ chưa)
+        with open(os.path.join(s_in, "test", "test_poses.csv")) as f:
+            n_pose = sum(1 for _ in f) - 1
 
-            # 1) TRAIN (bỏ qua nếu đã có checkpoint)
-            if st.get("train") != "done" or not os.path.exists(ckpt):
+        try:
+            # Skip theo FILE THỰC CÓ (không tin status.json — nó có thể trống
+            # sau khi restore output từ version trước, hoặc scene đã chạy
+            # bằng cell đơn lẻ không ghi status)
+
+            # 0) PREPARE: SIMPLE_RADIAL->PINHOLE, lọc images.bin, undistort nếu cần
+            if not os.path.exists(os.path.join(s_prep, "train", "sparse", "0", "images.bin")):
+                sh(f"python {args.pipe}/prepare_scene.py --scene {s_in} --out {s_prep}")
+            st["prepare"] = "done"
+            status[scene] = st
+            save_status(status_path, status)       # <-- checkpoint sau prepare
+
+            # 1) TRAIN (bỏ qua nếu đã có checkpoint đúng số iter)
+            if not os.path.exists(ckpt):
                 sh(f"cd {args.repo} && python train.py -s {s_prep}/train -m {m_out} "
                    f"--iterations {args.iters} --save_iterations {args.iters} "
                    f"--test_iterations {args.iters} -r 1")
-                st["train"] = "done"
-                status[scene] = st
-                save_status(status_path, status)   # <-- checkpoint sau train
+            st["train"] = "done"
+            status[scene] = st
+            save_status(status_path, status)       # <-- checkpoint sau train
 
-            # 2) RENDER test poses
-            sh(f"cd {args.repo} && python {args.pipe}/render_test_poses.py "
-               f"--model {m_out} --poses {s_in}/test/test_poses.csv "
-               f"--out {renders} --iteration {args.iters}")
+            # 2) RENDER test poses (bỏ qua nếu đã đủ ảnh)
+            if not (os.path.isdir(renders) and len(os.listdir(renders)) >= n_pose):
+                sh(f"cd {args.repo} && python {args.pipe}/render_test_poses.py "
+                   f"--model {m_out} --poses {s_in}/test/test_poses.csv "
+                   f"--out {renders} --iteration {args.iters}")
             st["render"] = "done"
 
             # 3) EVAL (public)
