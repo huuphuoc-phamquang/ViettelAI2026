@@ -1,13 +1,15 @@
 """
 Render 3DGS tại các camera pose cho trong test_poses.csv.
 
-Chạy TỪ TRONG thư mục repo gaussian-splatting (để import được các module của repo).
+Cần import module của repo gaussian-splatting. Script tự thêm repo vào sys.path
+(mặc định /kaggle/working/gaussian-splatting, đổi bằng env GS_REPO hoặc chạy từ
+trong thư mục repo). Lưu ý: Python chỉ thêm thư mục CHỨA SCRIPT vào sys.path,
+không thêm cwd — nên chỉ `cd` vào repo là chưa đủ.
 Ví dụ:
-    cd /kaggle/working/gaussian-splatting
     python /kaggle/working/pipeline/render_test_poses.py \
-        --model output/hcm0031 \
+        --model /kaggle/working/output/hcm0031 \
         --poses /kaggle/input/vt2026/public_set/hcm0031/test/test_poses.csv \
-        --out output/hcm0031/test_renders \
+        --out /kaggle/working/output/hcm0031/test_renders \
         --iteration 7000
 
 Test poses dùng convention COLMAP (giống images.bin): quaternion (qw,qx,qy,qz) và
@@ -24,7 +26,18 @@ import numpy as np
 import torch
 from PIL import Image as PILImage
 
-# ---- import từ repo gaussian-splatting (cwd phải là repo root) ----
+# ---- thêm repo gaussian-splatting vào sys.path rồi mới import ----
+_CANDIDATES = [os.environ.get("GS_REPO", ""), os.getcwd(),
+               "/kaggle/working/gaussian-splatting"]
+for _p in _CANDIDATES:
+    if _p and os.path.isdir(os.path.join(_p, "scene")):
+        if _p not in sys.path:
+            sys.path.insert(0, _p)
+        break
+else:
+    sys.exit("Không tìm thấy repo gaussian-splatting — set env GS_REPO "
+             "hoặc chạy từ trong thư mục repo")
+
 from scene.gaussian_model import GaussianModel
 from scene.cameras import MiniCam
 from gaussian_renderer import render

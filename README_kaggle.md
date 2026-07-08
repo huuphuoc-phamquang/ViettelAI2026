@@ -73,7 +73,8 @@ PREP = "/kaggle/working/scenes/hcm0031"
     --out /kaggle/working/output/hcm0031/test_renders \
     --iteration 7000
 ```
-> Phải chạy từ trong `gaussian-splatting/` để import được module của repo.
+> Script tự thêm repo vào sys.path (mặc định `/kaggle/working/gaussian-splatting`,
+> đổi bằng env `GS_REPO`) — không cần cd vào repo.
 > Ảnh lưu đúng tên `image_name` trong CSV (đây thường là định dạng nộp).
 
 ### 5. (public) Tính PSNR để sanity-check
