@@ -22,7 +22,7 @@ import argparse
 
 import numpy as np
 import torch
-from torchvision.utils import save_image
+from PIL import Image as PILImage
 
 # ---- import từ repo gaussian-splatting (cwd phải là repo root) ----
 from scene.gaussian_model import GaussianModel
@@ -94,7 +94,12 @@ def main():
         cam = build_minicam(row)
         with torch.no_grad():
             img = render(cam, gaussians, pipe, bg)["render"].clamp(0.0, 1.0)
-        save_image(img, os.path.join(args.out, row["image_name"]))
+        # lưu bằng PIL với quality cao — torchvision.save_image không nhận
+        # tham số quality, JPEG mặc định 75 làm giảm PSNR khi chấm
+        arr = (img.mul(255).add_(0.5).clamp_(0, 255)
+                  .permute(1, 2, 0).to("cpu", torch.uint8).numpy())
+        PILImage.fromarray(arr).save(os.path.join(args.out, row["image_name"]),
+                                     quality=95)
         if (i + 1) % 10 == 0:
             print(f"  {i + 1}/{len(rows)}")
     print("[render] done")

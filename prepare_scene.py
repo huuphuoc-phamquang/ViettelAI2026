@@ -139,6 +139,8 @@ def main():
     if need_undistort:
         import cv2
         import numpy as np
+        if os.path.islink(dst_images):
+            os.unlink(dst_images)      # symlink cũ trỏ vào input read-only
         os.makedirs(dst_images, exist_ok=True)
         c = cams[0]                                 # các scene này đều 1 camera
         fx, fy, cx, cy = c["pinhole"]
