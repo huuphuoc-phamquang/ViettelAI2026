@@ -91,15 +91,10 @@ def main():
             save_status(status_path, status)       # <-- checkpoint sau prepare
 
             # 1) TRAIN (bỏ qua nếu đã có checkpoint đúng số iter)
-            # --data_device cpu: ảnh để trên RAM (tiết kiệm ~3.7GB VRAM);
-            # expandable_segments: chống phân mảnh VRAM — cả hai chống OOM
-            # khi train 30k iter trên T4 14.5GB (4 scene private từng chết vì OOM)
             if not os.path.exists(ckpt):
-                sh(f"cd {args.repo} && "
-                   f"PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True "
-                   f"python train.py -s {s_prep}/train -m {m_out} "
+                sh(f"cd {args.repo} && python train.py -s {s_prep}/train -m {m_out} "
                    f"--iterations {args.iters} --save_iterations {args.iters} "
-                   f"--test_iterations {args.iters} -r 1 --data_device cpu")
+                   f"--test_iterations {args.iters} -r 1")
             st["train"] = "done"
             status[scene] = st
             save_status(status_path, status)       # <-- checkpoint sau train
