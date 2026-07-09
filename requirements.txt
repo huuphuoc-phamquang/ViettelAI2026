@@ -1,0 +1,19 @@
+# Môi trường: Kaggle GPU T4 (Python 3.11) — hầu hết đã cài sẵn trên Kaggle.
+# Chỉ cần `pip install plyfile` khi chạy trên Kaggle; danh sách đầy đủ dưới đây
+# để dựng lại môi trường ở nơi khác.
+
+torch>=2.0
+torchvision
+numpy
+pillow
+opencv-python        # undistort ảnh trong prepare_scene.py
+plyfile              # 3DGS đọc/ghi point_cloud.ply (KHÔNG có sẵn trên Kaggle)
+matplotlib           # chỉ dùng trong notebook để xem ảnh
+tqdm                 # train.py của 3DGS dùng
+
+# Các CUDA extension build từ submodule của repo gaussian-splatting
+# (KHÔNG cài từ PyPI — clone repo --recursive rồi build, nhớ set
+#  TORCH_CUDA_ARCH_LIST=7.5 cho T4 trước khi build):
+#   pip install submodules/diff-gaussian-rasterization
+#   pip install submodules/simple-knn
+#   pip install submodules/fused-ssim   (tuỳ chọn, lỗi có thể bỏ)
