@@ -71,7 +71,6 @@ train lại cho đồng nhất (checkpoint không mang theo) hoặc giữ kết 
 ## Ghi chú môi trường dev
 - Máy Windows local KHÔNG có Python thật (chỉ stub WindowsApps) → không chạy code local;
   verify binary bằng PowerShell. Notebook build/patch bằng script PowerShell.
-- Repo này là **local-only, chưa có remote**. Chuyển máy: copy nguyên thư mục
-  `ViettelAI2026/` (kèm `.git/`), hoặc tạo repo GitHub trống rồi
-  `git remote add origin <url> && git push -u origin main`.
+- Remote: `https://github.com/huuphuoc-phamquang/ViettelAI2026.git` — chuyển máy
+  chỉ cần `git clone` URL này. Data không nằm trong repo (tự copy riêng).
 - Thư mục `phase1/pipeline/` là bản copy đồng bộ của repo (dư — có thể xoá).
